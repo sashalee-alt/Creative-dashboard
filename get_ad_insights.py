@@ -32,6 +32,7 @@ CSV_FIELDS = [
     "spend",
     "conversions",
     "cost_per_conversion",
+    "purchase_value",
 ]
 
 
@@ -43,7 +44,7 @@ def get_insights(ad_account_id: str = AD_ACCOUNT_ID) -> list[dict]:
     url = f"https://graph.facebook.com/{API_VERSION}/{ad_account_id}/insights"
     params = {
         "level": "ad",
-        "fields": "ad_id,ad_name,campaign_id,campaign_name,impressions,clicks,ctr,cpc,spend,actions,cost_per_action_type",
+        "fields": "ad_id,ad_name,campaign_id,campaign_name,impressions,clicks,ctr,cpc,spend,actions,action_values,cost_per_action_type",
         "date_preset": "last_30d",
         "filtering": json.dumps([
             {
@@ -86,6 +87,14 @@ def parse_conversions(actions) -> str:
     return str(int(total)) if total else "0"
 
 
+def parse_purchase_value(action_values) -> float:
+    if not action_values:
+        return 0.0
+    for av in action_values:
+        if av.get("action_type") in ["offsite_conversion.fb_pixel_purchase", "purchase"]:
+            return float(av.get("value", 0))
+    return 0.0
+
 def parse_cost_per_conversion(cost_per_action_type) -> str:
     if not cost_per_action_type:
         return ""
@@ -115,6 +124,7 @@ def to_csv_row(raw: dict) -> dict:
         "spend": raw.get("spend", "0"),
         "conversions": parse_conversions(actions),
         "cost_per_conversion": parse_cost_per_conversion(cost_per_action_type),
+                "purchase_value": parse_purchase_value(raw.get("action_values")),
     }
 
 
