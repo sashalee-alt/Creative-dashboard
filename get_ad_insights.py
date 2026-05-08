@@ -69,7 +69,7 @@ def get_insights(ad_account_id: str = AD_ACCOUNT_ID) -> list[dict]:
 
         paging = data.get("paging", {})
         url = paging.get("next")
-        params = {}
+        params = {"access_token": ACCESS_TOKEN}
 
     print(f"  총 {len(rows)}개 광고 소재 조회 완료.        ")
     return rows
