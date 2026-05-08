@@ -47,9 +47,9 @@ function go() {
   renderKPI(rows);
   renderTable(rows);
   renderBrandChart(rows);
-  renderTrendChart(rows);
+  renderCreatorRoasChart(rows);
   renderTop10(rows);
-  renderManagerChart(rows);
+  renderFormatRoasChart(rows);
   renderRankings(rows);
 }
 
@@ -201,207 +201,111 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 /* ── Trend (area) Chart ── */
-function renderTrendChart(rows) {
-  const cv  = $('cv-trend');
-  const w   = cv.parentElement.clientWidth || 500;
-  cv.width  = w;
-  const h   = cv.height;
+function renderCreatorRoasChart(rows) {
+  const cv = $('cv-creator-roas');
+  if (!cv) return;
+  const w = cv.parentElement.clientWidth || 500;
+  cv.width = w;
+  const h = cv.height;
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, w, h);
 
-  const weeks = {};
+  const map = {};
   rows.forEach(r => {
-    if (!r.prod_date) return;
-    const d   = new Date(r.prod_date);
-    const mon = new Date(d);
-    mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    const wk  = mon.toISOString().slice(0, 10);
-    if (!weeks[wk]) weeks[wk] = { spend: 0, pv: 0 };
-    weeks[wk].spend += r.spend;
-    weeks[wk].pv    += r.purchase_value;
+    if (!r.creator || r.creator === '미표기') return;
+    if (!map[r.creator]) map[r.creator] = { spend: 0, pv: 0 };
+    map[r.creator].spend += r.spend;
+    map[r.creator].pv    += r.purchase_value;
   });
 
-  const pts = Object.entries(weeks).sort(([a],[b]) => a < b ? -1 : 1);
-  if (pts.length < 2) {
-    ctx.fillStyle = '#8a8580'; ctx.font = '13px system-ui';
-    ctx.fillText('주간 데이터 부족', 20, 40); return;
-  }
-
-  const PAD  = { t:28, r:20, b:44, l:58 };
-  const cW   = w - PAD.l - PAD.r;
-  const cH   = h - PAD.t - PAD.b;
-  const maxV = Math.max(...pts.map(([,v]) => Math.max(v.spend, v.pv))) || 1;
-  const cx   = i => PAD.l + (i / (pts.length - 1)) * cW;
-  const cy   = v => PAD.t + cH - (v / maxV) * cH;
-
-  // Grid
-  ctx.strokeStyle = '#ede9e3'; ctx.lineWidth = 1;
-  [0,.25,.5,.75,1].forEach(t => {
-    const y = PAD.t + cH * (1 - t);
-    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(w - PAD.r, y); ctx.stroke();
-    ctx.fillStyle = '#b0aba5'; ctx.font = '10px system-ui'; ctx.textAlign = 'right';
-    ctx.fillText(fmtK(maxV * t), PAD.l - 6, y + 3);
-  });
-
-  // X labels
-  ctx.fillStyle = '#b0aba5'; ctx.font = '10px system-ui'; ctx.textAlign = 'center';
-  pts.forEach(([wk], i) => {
-    if (i % 2 === 0 || i === pts.length - 1)
-      ctx.fillText(wk.slice(5), cx(i), PAD.t + cH + 16);
-  });
-
-  // Area fill — spend
-  ctx.beginPath();
-  ctx.moveTo(cx(0), PAD.t + cH);
-  pts.forEach(([,v], i) => ctx.lineTo(cx(i), cy(v.spend)));
-  ctx.lineTo(cx(pts.length - 1), PAD.t + cH);
-  ctx.closePath();
-  const g1 = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + cH);
-  g1.addColorStop(0, '#e8913a30'); g1.addColorStop(1, '#e8913a05');
-  ctx.fillStyle = g1; ctx.fill();
-
-  // Area fill — pv
-  ctx.beginPath();
-  ctx.moveTo(cx(0), PAD.t + cH);
-  pts.forEach(([,v], i) => ctx.lineTo(cx(i), cy(v.pv)));
-  ctx.lineTo(cx(pts.length - 1), PAD.t + cH);
-  ctx.closePath();
-  const g2 = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + cH);
-  g2.addColorStop(0, '#c4a35a30'); g2.addColorStop(1, '#c4a35a05');
-  ctx.fillStyle = g2; ctx.fill();
-
-  // Lines
-  [['spend','#e8913a'],['pv','#c4a35a']].forEach(([key, col]) => {
-    ctx.beginPath();
-    ctx.strokeStyle = col; ctx.lineWidth = 2.5;
-    ctx.lineJoin    = 'round'; ctx.lineCap = 'round';
-    pts.forEach(([,v], i) => i === 0 ? ctx.moveTo(cx(i), cy(v[key])) : ctx.lineTo(cx(i), cy(v[key])));
-    ctx.stroke();
-    // dots
-    ctx.fillStyle = col;
-    pts.forEach(([,v], i) => {
-      ctx.beginPath(); ctx.arc(cx(i), cy(v[key]), 3.5, 0, Math.PI*2); ctx.fill();
-    });
-  });
-
-  // Legend
-  ctx.textAlign = 'left'; ctx.font = '11px system-ui';
-  [['#e8913a','지출'],['#c4a35a','매출']].forEach(([col,lab], i) => {
-    ctx.fillStyle = col; ctx.fillRect(PAD.l + i*56, 6, 10, 10);
-    ctx.fillStyle = '#8a8580'; ctx.fillText(lab, PAD.l + i*56 + 14, 15);
-  });
-}
-
-/* ── TOP 10 table with progress bars ── */
-function renderTop10(rows) {
-  const top = rows
-    .filter(r => r.spend >= 50000 && r.purchase_value > 0)
-    .sort((a,b) => b.purchase_value - a.purchase_value)
+  let data = Object.entries(map)
+    .filter(([,v]) => v.spend >= 50000)
+    .map(([name,v]) => ({ name, roas: v.spend > 0 ? v.pv / v.spend : 0 }))
+    .sort((a,b) => b.roas - a.roas)
     .slice(0, 10);
-  const maxPV = top[0]?.purchase_value || 1;
-  const badges = ['gold','silver','bronze'];
-
-  $('top10-table').innerHTML = top.map((r, i) => {
-    const pct  = (r.purchase_value / maxPV * 100).toFixed(1);
-    const bc   = bcCls(r.brand);
-    const rankCls = badges[i] || '';
-    const short = r.ad_name.length > 28 ? r.ad_name.slice(0,28)+'…' : r.ad_name;
-    return `<tr>
-      <td style="width:32px;padding-right:8px">
-        <span class="rank-badge ${rankCls}">${i+1}</span>
-      </td>
-      <td style="width:100%">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-          <span class="bc ${bc}">${r.brand}</span>
-          <span class="top10-name" title="${r.ad_name}">${short}</span>
-        </div>
-        <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
-      </td>
-      <td class="top10-val" style="padding-left:12px">₩${fmtK(r.purchase_value)}</td>
-    </tr>`;
-  }).join('');
-}
-
-/* ── Manager Chart (horizontal bar) ── */
-function renderManagerChart(rows) {
-  const cv  = $('cv-manager');
-  const w   = cv.parentElement.clientWidth || 500;
-  cv.width  = w;
-  const h   = cv.height;
-  const ctx = cv.getContext('2d');
-  ctx.clearRect(0, 0, w, h);
-
-  const g = {};
-  rows.forEach(r => {
-    const k = r.manager;
-    if (k === '미표기') return;
-    if (!g[k]) g[k] = { spend:0, pv:0, clicks:0, impr:0 };
-    g[k].spend  += r.spend;
-    g[k].pv     += r.purchase_value;
-    g[k].clicks += r.clicks;
-    g[k].impr   += r.impressions;
-  });
-
-  const data = MGR_ORDER
-    .filter(k => g[k] && (g[k].spend > 0 || g[k].impr > 0))
-    .map(k => ({
-      name: k,
-      spend: g[k].spend,
-      pv:    g[k].pv,
-      ctr:   g[k].impr ? g[k].clicks / g[k].impr * 100 : 0,
-      col:   MGR_COLOR[k] || '#c4bdb8',
-    }));
 
   if (!data.length) {
     ctx.fillStyle = '#8a8580'; ctx.font = '13px system-ui';
     ctx.fillText('데이터 없음', 20, 40); return;
   }
 
-  const PAD   = { t:16, r:90, b:16, l:58 };
-  const cW    = w - PAD.l - PAD.r;
-  const cH    = h - PAD.t - PAD.b;
-  const rowH  = cH / data.length;
-  const barH  = Math.min(rowH * 0.38, 14);
-  const maxS  = Math.max(...data.map(d => d.spend)) || 1;
-  const maxPV = Math.max(...data.map(d => d.pv)) || 1;
+  const PAD = { t:16, r:70, b:16, l:90 };
+  const cW = w - PAD.l - PAD.r;
+  const cH = h - PAD.t - PAD.b;
+  const rowH = cH / data.length;
+  const barH = Math.min(rowH * 0.5, 16);
+  const maxR = Math.max(...data.map(d => d.roas)) || 1;
 
   data.forEach((d, i) => {
-    const y      = PAD.t + i * rowH;
-    const midY   = y + rowH / 2;
-    const sW     = (d.spend / maxS) * cW;
-    const pvW    = (d.pv    / maxPV) * cW;
+    const y    = PAD.t + i * rowH;
+    const midY = y + rowH / 2;
+    const bW   = (d.roas / maxR) * cW;
 
-    // name
-    ctx.fillStyle = '#2d2a26'; ctx.font = '13px system-ui';
+    ctx.fillStyle = '#2d2a26'; ctx.font = '12px system-ui';
     ctx.textAlign = 'right';
-    ctx.fillText(d.name, PAD.l - 8, midY + 4);
+    ctx.fillText(d.name.length > 8 ? d.name.slice(0,8)+'…' : d.name, PAD.l - 6, midY + 4);
 
-    // spend bar (bg)
-    ctx.fillStyle = d.col + '35';
-    roundRect(ctx, PAD.l, midY - barH - 2, sW, barH, 3); ctx.fill();
+    ctx.fillStyle = '#e8913a';
+    roundRect(ctx, PAD.l, midY - barH/2, bW, barH, 3); ctx.fill();
 
-    // pv bar
-    ctx.fillStyle = d.col;
-    roundRect(ctx, PAD.l, midY + 2, pvW, barH, 3); ctx.fill();
-
-    // CTR label on right
-    ctx.textAlign = 'left'; ctx.font = 'bold 12px system-ui';
-    ctx.fillStyle = '#8a8580';
-    ctx.fillText('CTR ' + d.ctr.toFixed(2) + '%', w - PAD.r + 6, midY - 2);
-    ctx.font = '11px system-ui';
-    ctx.fillStyle = '#b0aba5';
-    ctx.fillText('₩' + fmtK(d.pv), w - PAD.r + 6, midY + 13);
-  });
-
-  // Legend
-  ctx.textAlign = 'left'; ctx.font = '10px system-ui';
-  [['#e8913a35','지출'],['#e8913a','매출']].forEach(([col, lab], i) => {
-    ctx.fillStyle = col; ctx.fillRect(PAD.l + i*46, 4, 8, 8);
-    ctx.fillStyle = '#8a8580'; ctx.fillText(lab, PAD.l + i*46 + 11, 12);
+    ctx.textAlign = 'left'; ctx.font = 'bold 11px system-ui';
+    ctx.fillStyle = '#c47832';
+    ctx.fillText(d.roas.toFixed(2)+'x', PAD.l + bW + 5, midY + 4);
   });
 }
 
-/* ── Rankings ── */
+function renderFormatRoasChart(rows) {
+  const cv = $('cv-format-roas');
+  if (!cv) return;
+  const w = cv.parentElement.clientWidth || 500;
+  cv.width = w;
+  const h = cv.height;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, w, h);
+
+  const map = {};
+  rows.forEach(r => {
+    if (!r.format) return;
+    if (!map[r.format]) map[r.format] = { spend: 0, pv: 0 };
+    map[r.format].spend += r.spend;
+    map[r.format].pv    += r.purchase_value;
+  });
+
+  let data = Object.entries(map)
+    .map(([name,v]) => ({ name, roas: v.spend > 0 ? v.pv / v.spend : 0, spend: v.spend }))
+    .sort((a,b) => b.roas - a.roas);
+
+  if (!data.length) {
+    ctx.fillStyle = '#8a8580'; ctx.font = '13px system-ui';
+    ctx.fillText('데이터 없음', 20, 40); return;
+  }
+
+  const PAD = { t:16, r:70, b:16, l:70 };
+  const cW = w - PAD.l - PAD.r;
+  const cH = h - PAD.t - PAD.b;
+  const rowH = cH / data.length;
+  const barH = Math.min(rowH * 0.5, 20);
+  const maxR = Math.max(...data.map(d => d.roas)) || 1;
+  const colors = ['#e8913a','#c4a35a','#d4725c','#8a8580'];
+
+  data.forEach((d, i) => {
+    const y    = PAD.t + i * rowH;
+    const midY = y + rowH / 2;
+    const bW   = (d.roas / maxR) * cW;
+
+    ctx.fillStyle = '#2d2a26'; ctx.font = '13px system-ui';
+    ctx.textAlign = 'right';
+    ctx.fillText(d.name, PAD.l - 6, midY + 4);
+
+    ctx.fillStyle = colors[i % colors.length];
+    roundRect(ctx, PAD.l, midY - barH/2, bW, barH, 3); ctx.fill();
+
+    ctx.textAlign = 'left'; ctx.font = 'bold 12px system-ui';
+    ctx.fillStyle = '#c47832';
+    ctx.fillText(d.roas.toFixed(2)+'x', PAD.l + bW + 5, midY + 4);
+  });
+}
+
 function renderRankings(rows) {
   const topCTR  = [...rows].sort((a,b) => b.ctr - a.ctr).slice(0,10);
   const topROAS = [...rows].filter(r => r.spend >= 100000)
