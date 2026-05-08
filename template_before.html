@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>소재 성과 대시보드</title>
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #f5f3ef;
+  color: #2d2a26;
+  min-height: 100vh;
+}
+
+/* ── Tokens ── */
+:root {
+  --bg:        #f5f3ef;
+  --card:      #ffffff;
+  --border:    #e8e4df;
+  --text:      #2d2a26;
+  --sub:       #8a8580;
+  --accent:    #d4845a;
+  --kpi-num:   #c47832;
+  --tc:        #e8913a;
+  --ts:        #c4a35a;
+  --kg:        #d4725c;
+  --chart1:    #e8913a;
+  --chart2:    #f5c882;
+  --radius:    16px;
+  --shadow:    0 2px 8px rgba(0,0,0,.06);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,.09);
+}
+
+/* ── Layout ── */
+.page { max-width: 1440px; margin: 0 auto; padding: 32px 28px }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+/* ── Header ── */
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+.page-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.page-header p {
+  font-size: 13px;
+  color: var(--sub);
+  margin-top: 4px;
+}
+.header-badge {
+  background: #fff8f2;
+  border: 1px solid #f0d8c0;
+  color: var(--accent);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── KPI Row ── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.kpi-card {
+  padding: 24px 24px 20px;
+}
+.kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sub);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--kpi-num);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+.kpi-sub {
+  font-size: 12px;
+  color: var(--sub);
+  margin-top: 6px;
+}
+.kpi-card .dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ── Middle grid ── */
+.mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.chart-card {
+  padding: 24px;
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.card-sub {
+  font-size: 12px;
+  color: var(--sub);
+  margin-bottom: 20px;
+}
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* ── Bottom grid ── */
+.bot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* ── TOP 10 table ── */
+.top10-table { width: 100%; border-collapse: collapse }
+.top10-table td { padding: 9px 0; border-bottom: 1px solid #f0ece7; vertical-align: middle }
+.top10-table tr:last-child td { border-bottom: none }
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #f5ede4;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.rank-badge.gold   { background: #fff4d6; color: #a07828 }
+.rank-badge.silver { background: #f0ede8; color: #6e6860 }
+.rank-badge.bronze { background: #fbeee8; color: #8c4c30 }
+.top10-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.top10-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--kpi-num);
+  white-space: nowrap;
+  text-align: right;
+}
+.progress-track {
+  background: #f5ede4;
+  border-radius: 4px;
+  height: 5px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--tc), var(--chart2));
+}
+
+/* ── Brand chip ── */
+.bc {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.bc-tc { background: #fdeede; color: #b06020 }
+.bc-ts { background: #fdf5e0; color: #8c7020 }
+.bc-kg { background: #fde8e4; color: #9c4030 }
+.bc-etc { background: #f0ede8; color: #6e6860 }
+.tag-new {
+  display: inline-block;
+  background: #fff8e6;
+  color: #9c7020;
+  border: 1px solid #f0d898;
+  border-radius: 5px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.tag-fmt {
+  display: inline-block;
+  background: #f5f3ef;
+  color: var(--sub);
+  border-radius: 5px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ── Rankings ── */
+.rank-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.rank-table { width: 100%; border-collapse: collapse; font-size: 13px }
+.rank-table thead th {
+  background: #faf8f5;
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sub);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  border-bottom: 1px solid var(--border);
+}
+.rank-table tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f5f2ee;
+  vertical-align: middle;
+}
+.rank-table tbody tr:last-child td { border-bottom: none }
+.rank-num {
+  font-weight: 800;
+  color: var(--sub);
+  text-align: center;
+  width: 28px;
+  font-size: 12px;
+}
+.rank-name { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.hi { color: var(--tc); font-weight: 700 }
+
+/* ── Filter bar ── */
+.filter-section { margin-bottom: 16px }
+.filter-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  box-shadow: var(--shadow);
+}
+.fg { display: flex; align-items: center; gap: 7px }
+.fg label { font-size: 12px; font-weight: 600; color: var(--sub); white-space: nowrap }
+select, .search-in {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text);
+  background: #faf8f5;
+  transition: .15s;
+  cursor: pointer;
+}
+select:focus, .search-in:focus { outline: none; border-color: var(--accent); background: #fff }
+.sort-group { display: flex; gap: 5px }
+.sort-btn {
+  padding: 6px 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #faf8f5;
+  color: var(--sub);
+  font-family: inherit;
+  transition: .15s;
+}
+.sort-btn:hover { border-color: var(--accent); color: var(--accent) }
+.sort-btn.on { background: var(--accent); color: #fff; border-color: var(--accent) }
+.bar-divider { width: 1px; height: 28px; background: var(--border) }
+
+/* ── Main table ── */
+.table-card { overflow: hidden }
+.table-head-row {
+  padding: 18px 20px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.table-head-row h2 { font-size: 15px; font-weight: 700 }
+.row-count { font-size: 12px; color: var(--sub) }
+table.main { width: 100%; border-collapse: collapse }
+table.main thead th {
+  background: #faf8f5;
+  padding: 11px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sub);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+table.main thead th:hover { color: var(--accent) }
+table.main tbody tr.data-row { border-bottom: 1px solid #f5f2ee; cursor: pointer; transition: background .12s }
+table.main tbody tr.data-row:hover { background: #fdf9f5 }
+table.main tbody td { padding: 11px 16px; vertical-align: middle }
+.name-text { font-size: 13px; font-weight: 600; color: var(--text) }
+.chevron { color: var(--sub); font-size: 12px; margin-left: 4px; display: inline-block; transition: transform .2s }
+tr.open-row .chevron { transform: rotate(90deg) }
+.detail-row { display: none; background: #fdf8f3 }
+.detail-row.open { display: table-row }
+.detail-panel { padding: 16px 20px }
+.camp-row { font-size: 12px; color: var(--sub); margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center }
+.camp-chip { background: #fdeede; color: #9c5828; border-radius: 5px; padding: 1px 7px; font-size: 11px }
+.kpi-mini-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px }
+.kpi-mini {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.kpi-mini-label { font-size: 10px; color: var(--sub); font-weight: 600; text-transform: uppercase; letter-spacing: .04em }
+.kpi-mini-val { font-size: 17px; font-weight: 700; color: var(--kpi-num); margin-top: 3px }
+
+/* ── CTR/ROAS color ── */
+.ctr-hi { color: #5a9e70; font-weight: 700 }
+.ctr-lo { color: #c06050 }
+.roas-hi { color: var(--tc); font-weight: 700 }
+
+.footer { text-align: center; color: var(--sub); font-size: 12px; padding: 28px }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ── Header ── -->
+<div class="page-header">
+  <div>
+    <h1>소재 단위 성과 대시보드</h1>
+    <p>act_432245588163761 &nbsp;·&nbsp; 2026-03-26 ~ 2026-04-25 &nbsp;·&nbsp; ACTIVE 캠페인 &nbsp;·&nbsp; 기준일 2026-04-25 &nbsp;·&nbsp; 생성 2026-04-25 00:51</p>
+  </div>
+  <span class="header-badge" id="total-badge">소재 449개</span>
+</div>
+
+<!-- ── KPI Cards ── -->
+<div class="kpi-row" id="kpi-row">
+  <div class="card kpi-card"><div class="kpi-label">총 지출</div><div class="kpi-value" id="kpi-spend">—</div><div class="kpi-sub" id="kpi-spend-sub"></div></div>
+  <div class="card kpi-card"><div class="kpi-label">총 매출</div><div class="kpi-value" id="kpi-rev">—</div><div class="kpi-sub" id="kpi-rev-sub"></div></div>
+  <div class="card kpi-card"><div class="kpi-label">평균 CTR</div><div class="kpi-value" id="kpi-ctr">—</div><div class="kpi-sub" id="kpi-ctr-sub"></div></div>
+  <div class="card kpi-card"><div class="kpi-label">평균 ROAS</div><div class="kpi-value" id="kpi-roas">—</div><div class="kpi-sub" id="kpi-roas-sub"></div></div>
+</div>
+
+<!-- ── Middle: Brand bar + Trend line ── -->
+<div class="mid-grid">
+  <div class="card chart-card">
+    <div class="card-title">제품별 매출 비교</div>
+    <div class="card-sub">TC · TS · KG — 총 매출 기준</div>
+    <div class="chart-wrap"><canvas id="cv-brand" height="220"></canvas></div>
+  </div>
+  <div class="card chart-card">
+    <div class="card-title">주간 트렌드</div>
+    <div class="card-sub">제작일 기준 주차별 지출 · 매출</div>
+    <div class="chart-wrap"><canvas id="cv-trend" height="220"></canvas></div>
+  </div>
+</div>
+
+<!-- ── Bottom: TOP 10 + Manager chart ── -->
+<div class="bot-grid">
+  <div class="card chart-card">
+    <div class="card-title">소재 매출 TOP 10</div>
+    <div class="card-sub">지출 5만원 이상 소재 기준</div>
+    <table class="top10-table" id="top10-table"></table>
+  </div>
+  <div class="card chart-card">
+    <div class="card-title">제작자별 성과</div>
+    <div class="card-sub">Sasha · Sue · Hazel · Jinny — 지출 / 매출 / 평균 CTR</div>
+    <div class="chart-wrap"><canvas id="cv-manager" height="220"></canvas></div>
+  </div>
+</div>
+
+<!-- ── Rankings ── -->
+<div class="rank-grid">
+  <div class="card chart-card">
+    <div class="card-title">📈 CTR TOP 10</div>
+    <div class="card-sub">유입 효율 기준</div>
+    <table class="rank-table" id="rank-ctr">
+      <thead><tr><th>#</th><th>소재명</th><th>제품</th><th>CTR</th><th>지출</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <div class="card chart-card">
+    <div class="card-title">💰 ROAS TOP 10</div>
+    <div class="card-sub">전환 효율 기준 · 지출 10만원 이상</div>
+    <table class="rank-table" id="rank-roas">
+      <thead><tr><th>#</th><th>소재명</th><th>제품</th><th>ROAS</th><th>매출</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Filter + Full Table ── -->
+<div class="filter-section">
+  <div class="filter-bar">
+    <div class="fg"><label>제품</label>
+      <select id="f-brand" onchange="go()">
+        <option value="">전체</option>
+        <option value="KG">KG</option><option value="TC">TC</option><option value="TS">TS</option><option value="공통">공통</option><option value="기타">기타</option>
+      </select>
+    </div>
+    <div class="fg"><label>크리에이터</label>
+      <select id="f-creator" onchange="go()">
+        <option value="">전체</option>
+        <option value="30대에반드시">30대에반드시</option><option value="5분할">5분할</option><option value="X캡쳐">X캡쳐</option><option value="ai모델">ai모델</option><option value="가격때문에망설였다면">가격때문에망설였다면</option><option value="가격혜택">가격혜택</option><option value="가영">가영</option><option value="가영설윤선">가영설윤선</option><option value="강유주">강유주</option><option value="거뭇거뭇흔적없이">거뭇거뭇흔적없이</option><option value="골프샷">골프샷</option><option value="관리루틴">관리루틴</option><option value="그라미">그라미</option><option value="기미">기미</option><option value="기프트레시피">기프트레시피</option><option value="김단">김단</option><option value="김마찌">김마찌</option><option value="김평">김평</option><option value="나는성은">나는성은</option><option value="나은">나은</option><option value="내부촬영">내부촬영</option><option value="누끼모음">누끼모음</option><option value="누끼슬라이드">누끼슬라이드</option><option value="누아">누아</option><option value="단상자누끼">단상자누끼</option><option value="대용량주스">대용량주스</option><option value="대용량주스asmr">대용량주스asmr</option><option value="더늦기전에먹는케라틴">더늦기전에먹는케라틴</option><option value="디자인릴리즈컷">디자인릴리즈컷</option><option value="러키두부">러키두부</option><option value="렌즈밝기조절">렌즈밝기조절</option><option value="로즈">로즈</option><option value="리리">리리</option><option value="린다">린다</option><option value="릴리즈엘라">릴리즈엘라</option><option value="릴리즈일상컷">릴리즈일상컷</option><option value="릴리즈임산부">릴리즈임산부</option><option value="릴리즈지니엘라">릴리즈지니엘라</option><option value="릴리즈포컷">릴리즈포컷</option><option value="마감임박">마감임박</option><option value="마미톡vari">마미톡vari</option><option value="마음편히먹으니까">마음편히먹으니까</option><option value="맛에진심인오니스트의">맛에진심인오니스트의</option><option value="맛장인오니스트">맛장인오니스트</option><option value="맛제형">맛제형</option><option value="매거진1">매거진1</option><option value="매거진2">매거진2</option><option value="매거진3">매거진3</option><option value="매니챗">매니챗</option><option value="메타본캠">메타본캠</option><option value="모델헤어제품컷">모델헤어제품컷</option><option value="모발구성성분">모발구성성분</option><option value="모아나.윤총명">모아나.윤총명</option><option value="목린">목린</option><option value="목린컷">목린컷</option><option value="무물요정">무물요정</option><option value="무주">무주</option><option value="뭐가더좋을까콜라겐팩">뭐가더좋을까콜라겐팩</option><option value="미니피">미니피</option><option value="미백">미백</option><option value="박스,포">박스,포</option><option value="박스건네는">박스건네는</option><option value="박스누끼모음">박스누끼모음</option><option value="박스떼샷">박스떼샷</option><option value="박스떼샷3">박스떼샷3</option><option value="박스여는">박스여는</option><option value="박스튀어나오기">박스튀어나오기</option><option value="배시현">배시현</option><option value="배시현박유현">배시현박유현</option><option value="백소연">백소연</option><option value="밸유">밸유</option><option value="병원갈정도아닌데신경">병원갈정도아닌데신경</option><option value="봄햇볕시즌">봄햇볕시즌</option><option value="뷰티마케터4년차가">뷰티마케터4년차가</option><option value="브라이트닝">브라이트닝</option><option value="브이로그">브이로그</option><option value="빙고">빙고</option><option value="빛테이블위3포">빛테이블위3포</option><option value="빠밤">빠밤</option><option value="상시vari">상시vari</option><option value="새봄">새봄</option><option value="새봄제니퍼">새봄제니퍼</option><option value="샴푸">샴푸</option><option value="서영영상">서영영상</option><option value="서영컷">서영컷</option><option value="서이안목린김평">서이안목린김평</option><option value="설윤선">설윤선</option><option value="설윤선박유현">설윤선박유현</option><option value="성분표따져보는엄마도">성분표따져보는엄마도</option><option value="성분함량강조">성분함량강조</option><option value="세레나씨">세레나씨</option><option value="세여배우의공통점">세여배우의공통점</option><option value="세영">세영</option><option value="세컨드무물형">세컨드무물형</option><option value="소진님 숏폼 캡처">소진님 숏폼 캡처</option><option value="소케리">소케리</option><option value="소케리릴리즈">소케리릴리즈</option><option value="소케리지오희정">소케리지오희정</option><option value="송서미">송서미</option><option value="수완">수완</option><option value="숱부자지망생한테추천">숱부자지망생한테추천</option><option value="시술QnA">시술QnA</option><option value="신세계강남">신세계강남</option><option value="신인아">신인아</option><option value="아영">아영</option><option value="아이패드설명">아이패드설명</option><option value="아이폰알람">아이폰알람</option><option value="아이폰앨범">아이폰앨범</option><option value="알렉시스">알렉시스</option><option value="알렉시스인터뷰">알렉시스인터뷰</option><option value="액상포">액상포</option><option value="양과자">양과자</option><option value="양양">양양</option><option value="어차피먹어야한다면">어차피먹어야한다면</option><option value="언박싱">언박싱</option><option value="얼린포컷">얼린포컷</option><option value="에블린남편선물">에블린남편선물</option><option value="엘라릴리즈">엘라릴리즈</option><option value="엘리베이터">엘리베이터</option><option value="여자모델">여자모델</option><option value="연예인">연예인</option><option value="영은">영은</option><option value="영은배시현">영은배시현</option><option value="영은유현희정">영은유현희정</option><option value="예은">예은</option><option value="오늘마감">오늘마감</option><option value="오렌지샤베트">오렌지샤베트</option><option value="오렌지주스">오렌지주스</option><option value="오렌지컷">오렌지컷</option><option value="오숙">오숙</option><option value="올리브오렌지">올리브오렌지</option><option value="올리브오렌지샷">올리브오렌지샷</option><option value="올영vari">올영vari</option><option value="왓츠윤">왓츠윤</option><option value="왓츠인마이파우치">왓츠인마이파우치</option><option value="왜부원료없나요">왜부원료없나요</option><option value="왜트리플샤인일까요">왜트리플샤인일까요</option><option value="왜트리플이어야할까요">왜트리플이어야할까요</option><option value="요즘가장큰외모고민">요즘가장큰외모고민</option><option value="우수소재vari">우수소재vari</option><option value="워킹맘루나">워킹맘루나</option><option value="원료우수성">원료우수성</option><option value="원재료우수성">원재료우수성</option><option value="웨이브머리">웨이브머리</option><option value="웰컴이벤트">웰컴이벤트</option><option value="유주">유주</option><option value="유진">유진</option><option value="윤둥">윤둥</option><option value="윤둥.리리.왓츠윤">윤둥.리리.왓츠윤</option><option value="윤총명">윤총명</option><option value="윤하은">윤하은</option><option value="이미지슬라이드">이미지슬라이드</option><option value="이미지슬라이드1">이미지슬라이드1</option><option value="이미지슬라이드2">이미지슬라이드2</option><option value="이미지슬라이드3">이미지슬라이드3</option><option value="이미지슬라이드4">이미지슬라이드4</option><option value="이미지슬라이드5">이미지슬라이드5</option><option value="이여">이여</option><option value="이은선">이은선</option><option value="이정빈">이정빈</option><option value="인스타툰">인스타툰</option><option value="일상샷">일상샷</option><option value="일상제품2분할">일상제품2분할</option><option value="임산부도안심">임산부도안심</option><option value="임은지">임은지</option><option value="임지우">임지우</option><option value="임지우희정제니퍼">임지우희정제니퍼</option><option value="입술">입술</option><option value="입술안틈">입술안틈</option><option value="장바구니">장바구니</option><option value="장아영">장아영</option><option value="저울">저울</option><option value="정스봄">정스봄</option><option value="제니퍼">제니퍼</option><option value="제니퍼임지우희정">제니퍼임지우희정</option><option value="제형누끼">제형누끼</option><option value="젤리고감도">젤리고감도</option><option value="종합소구">종합소구</option><option value="좌니">좌니</option><option value="좌니.필름바이민">좌니.필름바이민</option><option value="좌니필름바이민">좌니필름바이민</option><option value="준영">준영</option><option value="지긋지긋한등드름">지긋지긋한등드름</option><option value="지니">지니</option><option value="지니잔디">지니잔디</option><option value="지민">지민</option><option value="지민님확대샷">지민님확대샷</option><option value="지민클로즈업">지민클로즈업</option><option value="지민햇살">지민햇살</option><option value="지아">지아</option><option value="지영주">지영주</option><option value="지오">지오</option><option value="채윤">채윤</option><option value="최대33">최대33</option><option value="출산후숱관리이제안심">출산후숱관리이제안심</option><option value="친구들단톡방에">친구들단톡방에</option><option value="카카오&메타">카카오&메타</option><option value="캐릭터더빙">캐릭터더빙</option><option value="캘린더">캘린더</option><option value="케라틴3개월변화">케라틴3개월변화</option><option value="케라틴개발일기">케라틴개발일기</option><option value="콜라겐맞아">콜라겐맞아</option><option value="키비주얼">키비주얼</option><option value="키비주얼1">키비주얼1</option><option value="키비주얼2">키비주얼2</option><option value="키비주얼3">키비주얼3</option><option value="키비주얼머리카락">키비주얼머리카락</option><option value="톤업미백">톤업미백</option><option value="투세이프인증">투세이프인증</option><option value="트콜따르는컷">트콜따르는컷</option><option value="트콜연출컷">트콜연출컷</option><option value="트콜제형">트콜제형</option><option value="트콜제형컵">트콜제형컵</option><option value="트콜컵교차컷">트콜컵교차컷</option><option value="파우치연출컷">파우치연출컷</option><option value="파우치찐템">파우치찐템</option><option value="파우치템이미지">파우치템이미지</option><option value="파트너십어셋">파트너십어셋</option><option value="패키지">패키지</option><option value="편익">편익</option><option value="편지봉투">편지봉투</option><option value="포,성분설명">포,성분설명</option><option value="포네이티브">포네이티브</option><option value="포성분">포성분</option><option value="포성분설명">포성분설명</option><option value="포스터">포스터</option><option value="포제형누끼">포제형누끼</option><option value="포쥔컷">포쥔컷</option><option value="포함량">포함량</option><option value="풀과빛배경">풀과빛배경</option><option value="플비">플비</option><option value="피부조아정">피부조아정</option><option value="핀터일상샷">핀터일상샷</option><option value="필름바이민">필름바이민</option><option value="하늘배경">하늘배경</option><option value="하늘포샷">하늘포샷</option><option value="하늘포샷리뷰">하늘포샷리뷰</option><option value="하은">하은</option><option value="한여름">한여름</option><option value="한지민">한지민</option><option value="한지민컷">한지민컷</option><option value="함량X왜천만포나">함량X왜천만포나</option><option value="허벅지위단상자빛">허벅지위단상자빛</option><option value="허신지">허신지</option><option value="헤어꿀팁">헤어꿀팁</option><option value="혜택슬라이드">혜택슬라이드</option><option value="화면녹화">화면녹화</option><option value="환절기피부당김">환절기피부당김</option><option value="후킹">후킹</option><option value="희서">희서</option><option value="희서린다예은">희서린다예은</option><option value="희서박하영양양">희서박하영양양</option><option value="희정">희정</option><option value="희정.새봄">희정.새봄</option><option value="희정가영">희정가영</option><option value="희정릴리즈">희정릴리즈</option>
+      </select>
+    </div>
+    <div class="fg"><label>포맷</label>
+      <select id="f-format" onchange="go()">
+        <option value="">전체</option>
+        <option value="기타">기타</option><option value="슬라이드">슬라이드</option><option value="영상">영상</option><option value="이미지">이미지</option>
+      </select>
+    </div>
+    <div class="fg"><label>제작자</label>
+      <select id="f-manager" onchange="go()">
+        <option value="">전체</option>
+        <option value="Hazel">Hazel</option><option value="Jinny">Jinny</option><option value="Sasha">Sasha</option><option value="Sue">Sue</option><option value="기타">기타</option><option value="미표기">미표기</option>
+      </select>
+    </div>
+    <div class="fg"><label>검색</label>
+      <input class="search-in" type="text" id="f-search" placeholder="소재명 키워드…" oninput="go()" style="width:180px">
+    </div>
+    <div class="bar-divider"></div>
+    <div class="fg"><label>정렬</label>
+      <div class="sort-group">
+        <button class="sort-btn on" onclick="setSort('ctr')">CTR</button>
+        <button class="sort-btn" onclick="setSort('purchase_value')">매출</button>
+        <button class="sort-btn" onclick="setSort('purchase')">구매</button>
+        <button class="sort-btn" onclick="setSort('roas')">ROAS</button>
+        <button class="sort-btn" onclick="setSort('spend')">지출</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card table-card">
+  <div class="table-head-row">
+    <h2>전체 소재 목록</h2>
+    <span class="row-count" id="row-count"></span>
+  </div>
+  <table class="main">
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th>소재명</th>
+        <th>제품</th>
+        <th>포맷</th>
+        <th onclick="setSort('ctr')">CTR ↕</th>
+        <th onclick="setSort('roas')">ROAS ↕</th>
+        <th onclick="setSort('purchase_value')">매출 ↕</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+</div><!-- .page -->
+<div class="footer">소재 단위 성과 대시보드 · 2026-04-25 00:51 · 449개 소재</div>
+
+<script>
